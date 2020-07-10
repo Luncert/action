@@ -10,7 +10,6 @@ import javax.websocket.OnMessage;
 import javax.websocket.OnOpen;
 import javax.websocket.Session;
 import javax.websocket.server.ServerEndpoint;
-import java.util.Optional;
 
 /**
  * WebSocket endpoint.
@@ -23,13 +22,6 @@ import java.util.Optional;
 @ServerEndpoint(value = "/v1/action")
 public class ActionManagerServer {
   
-  // FIXME: whether each ws connection will create a thread?
-  private static ThreadLocal<Session> sessionThreadLocal = new ThreadLocal<>();
-  
-  static Optional<Session> getSession() {
-    return Optional.ofNullable(sessionThreadLocal.get());
-  }
-  
   // FIXME: @Autowired + static doesn't work
   private static ActionHandlerManager actionHandlerManager;
   
@@ -40,27 +32,21 @@ public class ActionManagerServer {
   
   @OnOpen
   public void onOpen(Session session) {
-    sessionThreadLocal.set(session);
-
     log.info("connection established, session id={}", session.getId());
   }
   
   @OnClose
   public void onClose(Session session) {
-    sessionThreadLocal.remove();
-
     log.info("connection closed, session id={}", session.getId());
   }
   
   @OnMessage
-  public void onMessage(String jsonMsg) {
-    actionHandlerManager.handle(jsonMsg);
+  public void onMessage(Session session, String jsonMsg) {
+    actionHandlerManager.handle(session, jsonMsg);
   }
   
   @OnError
   public void onError(Throwable e) {
-    sessionThreadLocal.remove();
-
     log.error("WebSocket Error", e);
   }
 }

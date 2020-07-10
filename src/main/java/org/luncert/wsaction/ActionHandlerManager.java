@@ -6,19 +6,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.reflect.MethodUtils;
 import org.luncert.wsaction.annotation.ActionHandler;
 import org.luncert.wsaction.annotation.ActionHandlerRegistry;
-import org.luncert.wsaction.exception.InvalidActionHandlerMethodException;
+import org.luncert.wsaction.commons.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import javax.websocket.Session;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -81,15 +81,16 @@ public final class ActionHandlerManager {
    * verify handleData method's signature.
    */
   private void verifyMethodSignature(Method method) {
-    Parameter[] parameters = method.getParameters();
-    int modifiers = method.getModifiers();
-    // verify method modifiers and parameters
-    if (parameters.length != 1
-        || !parameters[0].getType().equals(Message.class)
-        || !Modifier.isPublic(modifiers)
-        || Modifier.isStatic(modifiers)) {
-      throw new InvalidActionHandlerMethodException(method);
-    }
+    //Parameter[] parameters = method.getParameters();
+    //int modifiers = method.getModifiers();
+    //// verify method modifiers and parameters
+    //if (parameters.length > 1
+    //    || (parameters.length == 1 &&
+    //    (!parameters[0].getType().equals(Message.class)
+    //        || !Modifier.isPublic(modifiers)
+    //        || Modifier.isStatic(modifiers)))) {
+    //  throw new InvalidActionHandlerMethodException(method);
+    //}
     
     if (!method.getReturnType().getName().equals("void")) {
       log.warn("Return value of action handler method {}#{} is redundant",
@@ -97,17 +98,22 @@ public final class ActionHandlerManager {
     }
   }
   
-  
-  void handle(String rawMessage) {
+  void handle(Session session, String rawMessage) {
     // deserialization
     JSONObject jsonObject = JSON.parseObject(rawMessage);
-    String action = jsonObject.getObject("action", String.class);
+    String action = jsonObject.getObject(Constants.ACTION_MSG_ACTION_KEY, String.class);
     
     ActionHandlerChain chain = actionHandlerChainMap.get(action);
     if (chain == null) {
       log.warn("No handler registered for action {}", action);
     } else {
-      chain.handle(rawMessage);
+      chain.handle(ActionHandlingContext.builder()
+          .springContext(applicationContext)
+          .session(new ActionSession(session))
+          .action(action)
+          .headers(jsonObject.getObject(Constants.ACTION_MSG_HEADERS_KEY, Properties.class))
+          .jsonMessage(jsonObject)
+          .build());
     }
   }
 }

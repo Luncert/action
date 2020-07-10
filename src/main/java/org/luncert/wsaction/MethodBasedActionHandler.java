@@ -8,17 +8,20 @@ import java.lang.reflect.Method;
 
 public class MethodBasedActionHandler extends AbstractActionHandler {
   
-  private Invokable handleMethod;
+  private final Invokable handleMethod;
   
-  MethodBasedActionHandler(String action, Object registry, Method method) {
-    super(action, resolveMessageBodyType(method));
+  private final Method method;
+  
+  MethodBasedActionHandler(String bindingAction, Object registry, Method method) {
+    super(bindingAction);
     this.handleMethod = new Invokable(registry, method);
+    this.method = method;
   }
   
   @Override
-  protected void handle(Message message) {
+  protected void handle(ActionHandlingContext context) {
     try {
-      handleMethod.apply(message);
+      handleMethod.apply(context.resolveHandlerMethodArguments(method));
     } catch (InvocationError e) {
       throw new ActionHandlerException(e);
     }

@@ -13,10 +13,11 @@ class ActionHandlerChain {
     this.actionHandlerList = actionHandlers;
   }
   
-  void handle(String rawMessage) {
+  void handle(ActionHandlingContext context) {
     for (AbstractActionHandler actionHandler : actionHandlerList) {
       log.debug("handleData over to handler {}", getHandlerName(actionHandler));
-      actionHandler.handleMessage(rawMessage);
+      
+      actionHandler.handle(context);
     }
   }
   

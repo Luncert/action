@@ -7,7 +7,7 @@ public class InvalidActionHandlerMethodException extends ActionHandlerException 
   
   public InvalidActionHandlerMethodException(Method method) {
     super(MessageFormat.format("Invalid action handler method {0}#{1}," +
-            " expect: public void handleMethod(Message<E> message)",
+            " expect: public void handleMethod(Message<E> message) or public void handleMethod()",
         method.getDeclaringClass().getSimpleName(), method.getName()));
   }
 }

@@ -15,7 +15,7 @@ public class Message<E> {
   
   private String action;
   
-  private Properties headers = new Properties();
+  private Properties headers;
   
   private E body;
 }
