@@ -17,6 +17,10 @@ public class ActionSession {
     return new ActionBuilder();
   }
   
+  public String getSessionId() {
+    return session.getId();
+  }
+  
   public class ActionBuilder {
     
     private Message<Object> message = new Message<>();
