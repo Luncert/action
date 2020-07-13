@@ -1,24 +1,25 @@
 package org.luncert.wsaction;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.reflect.MethodUtils;
 import org.luncert.wsaction.annotation.ActionHandler;
 import org.luncert.wsaction.annotation.ActionHandlerRegistry;
-import org.luncert.wsaction.commons.Constants;
+import org.luncert.wsaction.exception.MessageTransformException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import javax.websocket.Session;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -29,6 +30,9 @@ public final class ActionHandlerManager {
   
   @Autowired
   private ApplicationContext applicationContext;
+  
+  @Autowired
+  private ObjectMapper objectMapper;
   
   private Map<String, ActionHandlerChain> actionHandlerChainMap = new ConcurrentHashMap<>();
   
@@ -99,20 +103,20 @@ public final class ActionHandlerManager {
   }
   
   void handle(Session session, String rawMessage) {
-    // deserialization
-    JSONObject jsonObject = JSON.parseObject(rawMessage);
-    String action = jsonObject.getObject(Constants.ACTION_MSG_ACTION_KEY, String.class);
+    Message<ByteBuffer> message;
+    try {
+      message = MessageTransformer.fromBytes(rawMessage.getBytes());
+    } catch (IOException e) {
+      throw new MessageTransformException(e);
+    }
     
-    ActionHandlerChain chain = actionHandlerChainMap.get(action);
+    ActionHandlerChain chain = actionHandlerChainMap.get(message.getAction());
     if (chain == null) {
-      log.warn("No handler registered for action {}", action);
+      log.warn("No handler registered for action {}", message.getAction());
     } else {
       chain.handle(ActionHandlingContext.builder()
-          .springContext(applicationContext)
-          .session(new ActionSession(session))
-          .action(action)
-          .headers(jsonObject.getObject(Constants.ACTION_MSG_HEADERS_KEY, Properties.class))
-          .jsonMessage(jsonObject)
+          .session(new ActionSession(session, objectMapper))
+          .message(message)
           .build());
     }
   }

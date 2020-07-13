@@ -4,8 +4,6 @@ import org.luncert.wsaction.ActionHandlingContext;
 import org.luncert.wsaction.ActionSession;
 import org.springframework.core.MethodParameter;
 
-import javax.websocket.Session;
-
 public class ActionSessionRequiredArgumentResolver implements ActionHandlerMethodArgumentResolver {
   
   @Override

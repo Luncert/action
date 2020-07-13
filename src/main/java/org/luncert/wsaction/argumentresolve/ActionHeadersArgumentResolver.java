@@ -1,6 +1,7 @@
 package org.luncert.wsaction.argumentresolve;
 
 import org.luncert.wsaction.ActionHandlingContext;
+import org.luncert.wsaction.MessageHeaders;
 import org.luncert.wsaction.annotation.ActionHeaders;
 import org.luncert.wsaction.exception.ResolveHandlerMethodArgumentException;
 import org.springframework.core.MethodParameter;
@@ -16,8 +17,8 @@ public class ActionHeadersArgumentResolver implements ActionHandlerMethodArgumen
   
   @Override
   public Object resolveArgument(ActionHandlingContext context, MethodParameter parameter) throws Exception {
-    if (Properties.class.isAssignableFrom(parameter.getParameterType())) {
-      return context.getHeaders();
+    if (MessageHeaders.class.isAssignableFrom(parameter.getParameterType())) {
+      return context.getMessage().getHeaders();
     }
     throw new ResolveHandlerMethodArgumentException("parameter with @ActionHeaders annotation must be type of "
         + Properties.class.getName());

@@ -1,6 +1,5 @@
 package org.luncert.wsaction;
 
-import com.alibaba.fastjson.JSONObject;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -9,23 +8,19 @@ import org.luncert.wsaction.exception.ResolveHandlerMethodArgumentException;
 import org.springframework.context.ApplicationContext;
 
 import java.lang.reflect.Method;
-import java.util.Properties;
+import java.nio.ByteBuffer;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class ActionHandlingContext {
-  
-  private ApplicationContext springContext;
+
+  private ApplicationContext applicationContext;
   
   private ActionSession session;
   
-  private String action;
-  
-  private Properties headers;
-  
-  private JSONObject jsonMessage;
+  private Message<ByteBuffer> message;
   
   Object[] resolveHandlerMethodArguments(Method method) {
     try {

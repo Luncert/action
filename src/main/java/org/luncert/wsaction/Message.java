@@ -8,14 +8,13 @@ import lombok.NoArgsConstructor;
 import java.util.Properties;
 
 @Data
-@Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class Message<E> {
   
   private String action;
   
-  private Properties headers;
+  private MessageHeaders headers = new MessageHeaders();
   
   private E body;
 }
