@@ -11,7 +11,7 @@ import java.util.Map;
 
 final class MessageTransformer {
   
-  static byte[] toBytes(Message message, ObjectMapper objectMapper) throws IOException {
+  static byte[] toBytes(Message<Object> message, ObjectMapper objectMapper) throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
   
     // write action

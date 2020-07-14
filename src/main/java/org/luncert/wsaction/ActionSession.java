@@ -49,7 +49,7 @@ public class ActionSession {
     }
   }
   
-  private void sendMessage(Message message) {
+  private void sendMessage(Message<Object> message) {
     try {
       session.getBasicRemote().sendBinary(
           ByteBuffer.wrap(MessageTransformer.toBytes(message, objectMapper)));
