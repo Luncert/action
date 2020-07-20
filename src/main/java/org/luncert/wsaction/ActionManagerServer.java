@@ -3,6 +3,7 @@ package org.luncert.wsaction;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.BinaryMessage;
 
 import javax.websocket.OnClose;
 import javax.websocket.OnError;
@@ -16,6 +17,7 @@ import javax.websocket.server.ServerEndpoint;
  * NOTE: @Autowired in web-socket:
  * http://www.programmersought.com/article/2630477574/
  * https://blog.csdn.net/m0_37202351/article/details/86255132
+ * TODO: endpoint path should be configurable
  */
 @Slf4j
 @Component
@@ -41,8 +43,8 @@ public class ActionManagerServer {
   }
   
   @OnMessage
-  public void onMessage(Session session, String jsonMsg) {
-    actionHandlerManager.handle(session, jsonMsg);
+  public void onMessage(Session session, byte[] byteMsg) {
+    actionHandlerManager.handle(session, byteMsg);
   }
   
   @OnError

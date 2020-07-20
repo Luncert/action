@@ -78,7 +78,7 @@ final class MessageTransformer {
   }
   
   private static void assertN(int expect, int n) throws IOException {
-    if (n != expect) {
+    if (expect != 0 && n != expect) {
       throw new IOException("expect to read " + expect + " bytes, actually got " + n);
     }
   }

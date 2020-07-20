@@ -9,6 +9,7 @@ import org.luncert.wsaction.exception.MessageTransformException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.BinaryMessage;
 
 import javax.annotation.PostConstruct;
 import javax.websocket.Session;
@@ -102,10 +103,10 @@ public final class ActionHandlerManager {
     }
   }
   
-  void handle(Session session, String rawMessage) {
+  void handle(Session session, byte[] byteMsg) {
     Message<ByteBuffer> message;
     try {
-      message = MessageTransformer.fromBytes(rawMessage.getBytes());
+      message = MessageTransformer.fromBytes(byteMsg);
     } catch (IOException e) {
       throw new MessageTransformException(e);
     }
