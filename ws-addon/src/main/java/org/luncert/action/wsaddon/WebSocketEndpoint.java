@@ -2,6 +2,9 @@ package org.luncert.action.wsaddon;
 
 import lombok.extern.slf4j.Slf4j;
 import org.luncert.action.core.ActionHandlerManager;
+import org.luncert.action.core.commons.ActionManageEvent;
+import org.luncert.action.wsaddon.event.ConnectionClosedEvent;
+import org.luncert.action.wsaddon.event.ConnectionEstablishedEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -31,11 +34,19 @@ public class WebSocketEndpoint {
     @OnOpen
     public void onOpen(Session session) {
         log.info("connection established, session id={}", session.getId());
+        
+        ActionManageEvent event = new ConnectionEstablishedEvent();
+        event.put("session", new ConnectionSessionImpl(session));
+        actionHandlerManager.publishEvent(event);
     }
 
     @OnClose
     public void onClose(Session session) {
         log.info("connection closed, session id={}", session.getId());
+    
+        ActionManageEvent event = new ConnectionClosedEvent();
+        event.put("session", new ConnectionSessionImpl(session));
+        actionHandlerManager.publishEvent(event);
     }
 
     @OnMessage

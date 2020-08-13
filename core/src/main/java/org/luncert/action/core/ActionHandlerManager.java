@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.reflect.MethodUtils;
 import org.luncert.action.core.annotation.ActionHandler;
 import org.luncert.action.core.annotation.ActionHandlerRegistry;
+import org.luncert.action.core.annotation.ActionManageEventListener;
+import org.luncert.action.core.commons.ActionManageEvent;
 import org.luncert.action.core.exception.MessageTransformException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
@@ -29,7 +31,12 @@ public final class ActionHandlerManager {
   
   private final ObjectMapper objectMapper;
   
+  // actionName -> actionHandlerChain
   private Map<String, ActionHandlerChain> actionHandlerChainMap = new ConcurrentHashMap<>();
+  
+  // actionManageEvent -> listenerChain
+  private Map<Class<? extends ActionManageEvent>, ActionManageEventListenerChain> actionEventListenerChainMap
+      = new ConcurrentHashMap<>();
 
   public ActionHandlerManager(ApplicationContext applicationContext, ObjectMapper objectMapper) {
     this.applicationContext = applicationContext;
@@ -38,47 +45,60 @@ public final class ActionHandlerManager {
 
   @PostConstruct
   public void initFactory() {
-    // load all handlers
-    List<AbstractActionHandler> handlerList = new ArrayList<>();
-    handlerList.addAll(loadAllHandlerImplementations());
-    handlerList.addAll(buildHandlerWithRegistry());
+    loadActionHandlers();
+  }
+  
+  private void loadActionHandlers() {
+    // load all handlers and event listeners
+    List<AbstractEventListener> listenerList = new ArrayList<>();
+    List<AbstractActionHandler> handlerList = new ArrayList<>(loadAllHandlerImplementations());
     
-    log.info("Loaded action handlers: {}", handlerList);
+    // process handler registry
+    Collection<Object> handlerRegistryCollection =
+        applicationContext.getBeansWithAnnotation(ActionHandlerRegistry.class).values();
+  
+    for (Object registry : handlerRegistryCollection) {
+      Class<?> registryType = registry.getClass();
     
-    // group by ipcAddress action
+      // get all methods with annotation @ActionHandler
+      List<Method> methodList = MethodUtils.getMethodsListWithAnnotation(registryType, ActionHandler.class);
+      for (Method method : methodList) {
+        verifyMethodSignature(method);
+      
+        String bindingAction = method.getAnnotation(ActionHandler.class).value();
+        handlerList.add(new MethodBasedActionHandler(bindingAction, registry, method));
+      }
+    
+      // get all methods with annotation @ActionManageEventListener
+      methodList = MethodUtils.getMethodsListWithAnnotation(registryType, ActionManageEventListener.class);
+      for (Method method : methodList) {
+        Class<? extends ActionManageEvent> bindingEvent = method.getAnnotation(ActionManageEventListener.class).value();
+        listenerList.add(new MethodBasedEventListener(bindingEvent, registry, method));
+      }
+    }
+  
+    log.info("Loaded ActionHandler: {}", handlerList);
+    log.info("Loaded ActionManageEventListener: {}", handlerList);
+  
+    // group handlers by action
     Map<String, List<AbstractActionHandler>> handlerAfterGroupBy = handlerList.stream()
         .collect(Collectors.groupingBy(AbstractActionHandler::getBindingAction));
-    
+  
     for (Map.Entry<String, List<AbstractActionHandler>> entry : handlerAfterGroupBy.entrySet()) {
       actionHandlerChainMap.put(entry.getKey(), new ActionHandlerChain(entry.getValue()));
+    }
+    
+    // group listeners by event
+    Map<Class<? extends ActionManageEvent>, List<AbstractEventListener>> listenerAfterGroupBy = listenerList.stream()
+        .collect(Collectors.groupingBy(AbstractEventListener::getBindingEvent));
+  
+    for (Map.Entry<Class<? extends ActionManageEvent>, List<AbstractEventListener>> entry : listenerAfterGroupBy.entrySet()) {
+      actionEventListenerChainMap.put(entry.getKey(), new ActionManageEventListenerChain(entry.getValue()));
     }
   }
   
   private Collection<AbstractActionHandler> loadAllHandlerImplementations() {
     return applicationContext.getBeansOfType(AbstractActionHandler.class).values();
-  }
-  
-  /**
-   * find all class with @ActionHandlerRegistry annotation, and build ActionHandler for their handleData method.
-   */
-  private List<AbstractActionHandler> buildHandlerWithRegistry() {
-    Collection<Object> handlerRegistryCollection =
-        applicationContext.getBeansWithAnnotation(ActionHandlerRegistry.class).values();
-    
-    List<AbstractActionHandler> handlerList = new ArrayList<>();
-    
-    for (Object registry : handlerRegistryCollection) {
-      Class<?> registryType = registry.getClass();
-      List<Method> methodList = MethodUtils.getMethodsListWithAnnotation(registryType, ActionHandler.class);
-      for (Method method : methodList) {
-        verifyMethodSignature(method);
-        
-        String bindingAction = method.getAnnotation(ActionHandler.class).value();
-        handlerList.add(new MethodBasedActionHandler(bindingAction, registry, method));
-      }
-    }
-    
-    return handlerList;
   }
   
   /**
@@ -88,6 +108,15 @@ public final class ActionHandlerManager {
     if (!method.getReturnType().getName().equals("void")) {
       log.warn("Return value of action handler method {}#{} is redundant",
           method.getDeclaringClass().getSimpleName(), method.getName());
+    }
+  }
+  
+  public void publishEvent(ActionManageEvent event) {
+    ActionManageEventListenerChain chain = actionEventListenerChainMap.get(event.getClass());
+    if (chain == null) {
+      log.debug("No listener subscribed event {}", event);
+    } else {
+      chain.handle(new EventHandlingContext(event, objectMapper));
     }
   }
   
